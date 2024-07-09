@@ -58,7 +58,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr-frank-push-images.outputs.registry }}
         run: |
-          docker push $REGISTRY/$REPOSITORY:$VERSION-$TAG_AMD64
+          docker push $REGISTRY/$REPOSITORY:$VERSION
         #docker push $REGISTRY/$REPOSITORY:$VERSION-$TAG_ARM64
 
 #      - name: Create manifest       #combine arm and amd images like a "router"
