@@ -51,7 +51,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr-frank-push-images.outputs.registry }}
         run: |
-          docker buildx build --platform linux/amd64 -t $REGISTRY/$REPOSITORY:$VERSION-$TAG_AMD64 . --load
+          docker buildx build --platform linux/amd64 -t $REGISTRY/$REPOSITORY:$VERSION . --load
         #docker buildx build --platform linux/arm64 -t $REGISTRY/$REPOSITORY:$VERSION-$TAG_ARM64 . --load
 
       - name: Push docker image  to Amazon ECR  # push as simple images
