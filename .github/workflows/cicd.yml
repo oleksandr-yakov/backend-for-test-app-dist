@@ -1,0 +1,76 @@
+name: Back Continuous Integration and Delivery
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+
+
+env:
+  AWS_REGION_FRANKFURT: eu-central-1
+  REPOSITORY: backend-for-test-app-dist
+  VERSION: latest
+  TAG_ARM64: arm64
+  TAG_AMD64: amd64
+  ROLE_TO_ASSUME: arn:aws:iam::905418051827:role/app-backend-github-push-role
+
+jobs:
+  integration_delivery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Configure AWS credentials for Frankfurt
+        uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION_FRANKFURT }}
+
+      #      - name: Sts GetCallerIdentity
+      #        run: |
+      #          aws sts get-caller-identity
+
+      - name: Login to Amazon ECR for  Frankfurt (push images)
+        id: login-ecr-frank-push-images
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build docker image  # create docker images with diff arh: amd / arm and save as images using --load
+        env:
+          REGISTRY: ${{ steps.login-ecr-frank-push-images.outputs.registry }}
+        run: |
+          docker buildx build --platform linux/amd64 -t $REGISTRY/$REPOSITORY:$VERSION-$TAG_AMD64 . --load
+        #docker buildx build --platform linux/arm64 -t $REGISTRY/$REPOSITORY:$VERSION-$TAG_ARM64 . --load
+
+      - name: Push docker image  to Amazon ECR  # push as simple images
+        env:
+          REGISTRY: ${{ steps.login-ecr-frank-push-images.outputs.registry }}
+        run: |
+          docker push $REGISTRY/$REPOSITORY:$VERSION-$TAG_AMD64
+        #docker push $REGISTRY/$REPOSITORY:$VERSION-$TAG_ARM64
+
+#      - name: Create manifest       #combine arm and amd images like a "router"
+#        env:
+#          REGISTRY: ${{ steps.login-ecr-n-virginia.outputs.registry }}
+#        run: |
+#          docker manifest create $REGISTRY/$REPOSITORY:$VERSION  \
+#          --amend $REGISTRY/$REPOSITORY:$VERSION-$TAG_AMD64 \
+#          --amend $REGISTRY/$REPOSITORY:$VERSION-$TAG_ARM64
+#
+#      - name: Push manifest
+#        env:
+#          REGISTRY: ${{ steps.login-ecr-n-virginia.outputs.registry }}
+#        run: |
+#          docker manifest push $REGISTRY/$REPOSITORY:$VERSION
